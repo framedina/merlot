@@ -1,0 +1,291 @@
+Código UserForm EstudioDeCrédito:
+
+Option Explicit
+
+' Llama al Formulario Calendario para llenar rápidamente el campo con doble click en el campo
+Private Sub Calendario_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
+    Dim fechadeverificacion As Date
+    fechadeverificacion = CalendarForm.GetDate
+    Calendario.value = fechadeverificacion
+End Sub
+
+' Llama al Formulario Calendario para llenar rápidamente el campo con click en el Botón Calendario
+Private Sub FechaVerificacion_Click()
+    Dim fechadeverificacion As Date
+    fechadeverificacion = CalendarForm.GetDate
+    FechaVerificacion.value = fechadeverificacion
+End Sub
+
+
+' Función para cargar la identificación del verificador en el UserForm EstudioDeCrédito al inicializarse
+Private Sub UserForm_Initialize()
+    Debug.Print "Iniciando UserForm y cargando verificadores..."
+    CargarVerificadores
+End Sub
+
+' Función para cargar la identificación del verificador en el UserForm EstudioDeCrédito
+Private Sub CargarIdVerificador(nombreVerificador As String)
+    Dim wsVerificadores As Worksheet
+    Dim tblVerificadores As ListObject
+    Dim fila As ListRow
+
+    ' Configurar la hoja con los verificadores
+    Set wsVerificadores = ThisWorkbook.Sheets("BDVerificadores")
+    Set tblVerificadores = wsVerificadores.ListObjects("BDVerificadores")
+
+    ' Recorrer cada fila de la tabla para encontrar el nombre del verificador
+    For Each fila In tblVerificadores.ListRows
+        If fila.Range(1, 1).value = nombreVerificador Then ' Ajusta el índice según la columna donde esté el nombre del verificador
+            ' Cargar la identificación del verificador en los controles del UserForm (ajusta el control según el campo)
+            IdVerificador.value = fila.Range(1, 2).value
+            Exit For
+        End If
+    Next fila
+End Sub
+
+' Función para cargar la lista de verificadores en el ComboBox
+Private Sub CargarVerificadores()
+    Dim wsVerificadores As Worksheet
+    Dim tblVerificadores As ListObject
+    Dim fila As ListRow
+
+    ' Configurar la hoja con los verificadores
+    Set wsVerificadores = ThisWorkbook.Sheets("BDVerificadores")
+    Set tblVerificadores = wsVerificadores.ListObjects("BDVerificadores")
+
+    ' Recorrer cada fila de la tabla y agregar el nombre del verificador al ComboBox
+    For Each fila In tblVerificadores.ListRows
+        ComboBox1.AddItem fila.Range(1, 1).value ' Ajusta el índice según la columna donde esté el nombre del verificador
+    Next fila
+End Sub
+
+' Cambiar el valor del ComboBox y cargar la ID del verificador
+Private Sub ComboBox1_Change()
+    If ComboBox1.ListIndex <> -1 Then
+        Debug.Print "ComboBox1 cambiado. Cargando ID del verificador..."
+        CargarIdVerificador ComboBox1.value
+    End If
+End Sub
+
+' Manejar el evento KeyDown en el campo CodCred para cargar datos
+Private Sub CodCred_KeyDown(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
+    If KeyCode = vbKeyReturn Or KeyCode = vbKeyTab Then
+        If CodCred.value <> "" Then
+            Debug.Print "Presionada tecla Enter o Tab en CodCred. Cargando datos..."
+            CargarDatos CodCred.value
+        Else
+            MsgBox "Por favor, ingrese un código de crédito.", vbExclamation
+        End If
+    End If
+End Sub
+
+' Manejar el clic en el botón Siguiente1 para registrar datos
+Private Sub Siguiente1_Click()
+    If ComboBox1.ListIndex = -1 Or CodCred.value = "" Then
+        MsgBox "Por favor, seleccione un verificador y un número de crédito válido.", vbExclamation
+        Exit Sub
+    End If
+
+    ' Calcular el porcentaje basado en los checkboxes
+    CalcularPorcentaje
+
+    Debug.Print "Botón Siguiente1 clicado. Registrando datos..."
+    RegistrarDatos
+End Sub
+
+' Función para cargar datos del formulario según el código de crédito
+Private Sub CargarDatos(ByVal CodCred As String)
+    Dim ws As Worksheet
+    Dim lo As ListObject
+    Dim rng As Range
+    
+    On Error GoTo ErrorHandler
+    Set ws = ThisWorkbook.Sheets("Respuestas de formulario 1")
+    Set lo = ws.ListObjects("RespuestasGoogleForms")
+    Debug.Print "Hoja y tabla RespuestasGoogleForms encontradas."
+
+    ' Buscar una coincidencia exacta
+    Set rng = lo.ListColumns("Solicitud de Crédito").DataBodyRange.Find(What:=CodCred, LookIn:=xlValues, LookAt:=xlWhole)
+    If Not rng Is Nothing Then
+        With Me
+            .TextBox3.value = rng.Offset(0, 3).value ' Primer nombre solicitante
+            .TextBox6.value = rng.Offset(0, 4).value ' Segundo nombre solicitante
+            .TextBox7.value = rng.Offset(0, 5).value ' Primer apellido solicitante
+            .TextBox8.value = rng.Offset(0, 6).value ' Segundo apellido solicitante
+            .TextBox11.value = rng.Offset(0, 8).value ' Fecha de nacimiento
+            .TextBox12.value = rng.Offset(0, 9).value ' Lugar de nacimiento
+            .TextBox4.value = rng.Offset(0, 10).value ' Tipo de Identificación
+            .TextBox5.value = rng.Offset(0, 11).value ' Número de identificación
+            .TextBox9.value = rng.Offset(0, 12).value ' Fecha de expedición
+            .TextBox10.value = rng.Offset(0, 13).value ' Lugar de expedición
+            .Direccion.value = rng.Offset(0, 14).value ' Dirección
+            .barrio.value = rng.Offset(0, 15).value ' Barrio
+            .municipio.value = rng.Offset(0, 16).value ' Municipio de residencia
+            .TextBox17.value = rng.Offset(0, 17).value ' Teléfono
+            .TextBox16.value = rng.Offset(0, 18).value ' Correo electrónico
+        End With
+        Debug.Print "Datos cargados para el código de crédito: " & CodCred
+    Else
+        MsgBox "Solicitud de crédito no encontrada.", vbExclamation
+        Debug.Print "Solicitud de crédito no encontrada para el código: " & CodCred
+    End If
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "Error al cargar datos: " & Err.Description, vbExclamation
+    Debug.Print "Error al cargar datos: " & Err.Description
+End Sub
+
+' Calcular el porcentaje basado en los checkboxes
+Private Sub CalcularPorcentaje()
+    Dim porcentaje As Double
+    porcentaje = 0
+    
+    If CheckBox1.value Then porcentaje = porcentaje + 33.33
+    If CheckBox2.value Then porcentaje = porcentaje + 33.33
+    If CheckBox3.value Then porcentaje = porcentaje + 33.34
+    
+    ScoreD1.value = porcentaje
+End Sub
+
+' Registrar los datos del UserForm en la hoja correspondiente
+Private Sub RegistrarDatos()
+    Dim ws As Worksheet
+    Dim ultimaFila As Long
+    
+    On Error GoTo ErrorHandler
+    Set ws = ThisWorkbook.Sheets("EstudiodeCrédito")
+    ultimaFila = ws.Cells(ws.Rows.Count, 1).End(xlUp).row + 1
+    Debug.Print "Última fila en la hoja EstudiodeCrédito: " & ultimaFila
+
+    With ws
+        .Cells(ultimaFila, 1).value = Now
+        .Cells(ultimaFila, 2).value = ComboBox1.value
+        .Cells(ultimaFila, 3).value = CodCred.value
+        .Cells(ultimaFila, 4).value = TextBox3.value
+        .Cells(ultimaFila, 5).value = TextBox6.value
+        .Cells(ultimaFila, 6).value = TextBox7.value
+        .Cells(ultimaFila, 7).value = TextBox8.value
+        .Cells(ultimaFila, 8).value = TextBox11.value
+        .Cells(ultimaFila, 9).value = TextBox12.value
+        .Cells(ultimaFila, 10).value = TextBox4.value
+        .Cells(ultimaFila, 11).value = TextBox5.value
+        .Cells(ultimaFila, 12).value = TextBox9.value
+        .Cells(ultimaFila, 13).value = TextBox10.value
+        .Cells(ultimaFila, 14).value = Direccion.value
+        .Cells(ultimaFila, 15).value = barrio.value
+        .Cells(ultimaFila, 16).value = municipio.value
+        .Cells(ultimaFila, 17).value = TextBox17.value
+        .Cells(ultimaFila, 18).value = TextBox16.value
+        .Cells(ultimaFila, 19).value = CheckBox1.value
+        .Cells(ultimaFila, 20).value = CheckBox2.value
+        .Cells(ultimaFila, 21).value = CheckBox3.value
+        .Cells(ultimaFila, 22).value = ScoreD1.value
+        .Cells(ultimaFila, 23).value = TextBox18.value
+    End With
+    
+    MsgBox "Datos confirmados y registrados correctamente.", vbInformation
+    Debug.Print "Datos registrados correctamente."
+
+    Unload EstudioDeCrédito
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "Error al registrar datos: " & Err.Description, vbExclamation
+    Debug.Print "Error al registrar datos: " & Err.Description
+End Sub
+Private Sub cmdSiguiente1_Click()
+    ' Cambiar a la página 2
+    MultiPage1.value = 1
+End Sub
+
+Private Sub cmdSiguiente2_Click()
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Sheets("EstudiodeCrédito")
+    
+    Dim row As Long
+    row = ws.Cells(ws.Rows.Count, 1).End(xlUp).row + 1
+
+    ' Cálculo de totales
+    Dim totalIngresos As Double
+    totalIngresos = CDbl(txtSalarios.value) + CDbl(txtArrendamientos.value) + CDbl(txtOtrosIngresos.value) + CDbl(txtIngresosConyuge.value)
+    
+    Dim totalEgresos As Double
+    totalEgresos = CDbl(txtVivienda.value) + CDbl(txtImpuestos.value) + CDbl(txtSeguros.value) + CDbl(txtAlimentacion.value) + CDbl(txtTransporte.value) + CDbl(txtServicios.value) + CDbl(txtCuotasDeudas.value) + CDbl(txtOtrosGastos.value)
+    
+    Dim totalActivos As Double
+    totalActivos = CDbl(txtBienesInmuebles.value) + CDbl(txtVehiculos.value) + CDbl(txtInversionesRentas.value)
+    
+    Dim totalPasivos As Double
+    totalPasivos = CDbl(txtHipotecaLeasing.value) + CDbl(txtPrestamoVehiculos.value) + CDbl(txtOtrasDeudas.value)
+    
+    ' Ingresos
+    ws.Cells(row, 1).value = Format(CDbl(txtSalarios.value), "#,##0")
+    ws.Cells(row, 2).value = Format(CDbl(txtArrendamientos.value), "#,##0")
+    ws.Cells(row, 3).value = Format(CDbl(txtOtrosIngresos.value), "#,##0")
+    ws.Cells(row, 4).value = Format(CDbl(txtIngresosConyuge.value), "#,##0")
+    ws.Cells(row, 5).value = Format(totalIngresos, "#,##0")
+
+    ' Egresos
+    ws.Cells(row, 6).value = Format(CDbl(txtVivienda.value), "#,##0")
+    ws.Cells(row, 7).value = Format(CDbl(txtImpuestos.value), "#,##0")
+    ws.Cells(row, 8).value = Format(CDbl(txtSeguros.value), "#,##0")
+    ws.Cells(row, 9).value = Format(CDbl(txtAlimentacion.value), "#,##0")
+    ws.Cells(row, 10).value = Format(CDbl(txtTransporte.value), "#,##0")
+    ws.Cells(row, 11).value = Format(CDbl(txtServicios.value), "#,##0")
+    ws.Cells(row, 12).value = Format(CDbl(txtCuotasDeudas.value), "#,##0")
+    ws.Cells(row, 13).value = Format(CDbl(txtOtrosGastos.value), "#,##0")
+    ws.Cells(row, 14).value = Format(totalEgresos, "#,##0")
+
+    ' Activos
+    ws.Cells(row, 15).value = Format(CDbl(txtBienesInmuebles.value), "#,##0")
+    ws.Cells(row, 16).value = Format(CDbl(txtVehiculos.value), "#,##0")
+    ws.Cells(row, 17).value = Format(CDbl(txtInversionesRentas.value), "#,##0")
+    ws.Cells(row, 18).value = Format(totalActivos, "#,##0")
+
+    ' Pasivos
+    ws.Cells(row, 19).value = Format(CDbl(txtHipotecaLeasing.value), "#,##0")
+    ws.Cells(row, 20).value = Format(CDbl(txtPrestamoVehiculos.value), "#,##0")
+    ws.Cells(row, 21).value = Format(CDbl(txtOtrasDeudas.value), "#,##0")
+    ws.Cells(row, 22).value = Format(totalPasivos, "#,##0")
+
+    ' Observaciones
+    ws.Cells(row, 23).value = txtObservaciones.value
+
+    ' Cálculo del Score D2
+    Dim ingresosEgresos As Double
+    Dim activosPasivos As Double
+    Dim scoreIngresosEgresos As Double
+    Dim scoreActivosPasivos As Double
+    Dim totalScore As Double
+
+    ingresosEgresos = totalIngresos - totalEgresos
+    activosPasivos = totalActivos - totalPasivos
+
+    ' Cálculo Score Ingresos-Egresos
+    If ingresosEgresos < 0 Then
+        scoreIngresosEgresos = 0
+    ElseIf ingresosEgresos < 500000 Then
+        scoreIngresosEgresos = 40
+    Else
+        scoreIngresosEgresos = 80
+    End If
+
+    ' Cálculo Score Activos-Pasivos
+    If activosPasivos >= 0 Then
+        scoreActivosPasivos = 20
+    ElseIf activosPasivos >= -0.2 * totalPasivos Then
+        scoreActivosPasivos = 10
+    Else
+        scoreActivosPasivos = 0
+    End If
+
+    totalScore = scoreIngresosEgresos + scoreActivosPasivos
+    ws.Cells(row, 24).value = totalScore
+
+    ' Mostrar la página 3 del UserForm
+    MultiPage1.value = 2
+
+    ' Mensaje de confirmación
+    MsgBox "Datos guardados exitosamente en la hoja 'EstudiodeCrédito'."
+End Sub
